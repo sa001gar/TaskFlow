@@ -42,7 +42,7 @@ export const useAuthStore = create<AuthState>()(
               .from('users')
               .select('*')
               .eq('id', data.user.id)
-              .maybeSingle();
+              .single();
 
             if (userError) {
               // Create user profile if it doesn't exist
@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
                 .insert([
                   {
                     id: data.user.id,
-                    full_name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+                    name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
                     email: data.user.email!,
                   },
                 ])
@@ -62,7 +62,7 @@ export const useAuthStore = create<AuthState>()(
               
               // Get user's default company
               const { data: companyData } = await supabase
-                .from('company_memberships')
+                .from('company_users')
                 .select(`
                   role,
                   companies (*)
@@ -84,7 +84,7 @@ export const useAuthStore = create<AuthState>()(
             } else {
               // Get user's default company
               const { data: companyData } = await supabase
-                .from('company_memberships')
+                .from('company_users')
                 .select(`
                   role,
                   companies (*)
@@ -133,7 +133,7 @@ export const useAuthStore = create<AuthState>()(
               .insert([
                 {
                   id: data.user.id,
-                  full_name: name,
+                  name,
                   email,
                 },
               ])
@@ -153,12 +153,12 @@ export const useAuthStore = create<AuthState>()(
 
             // Add user as superuser of the company
             const { error: companyUserError } = await supabase
-              .from('company_memberships')
+              .from('company_users')
               .insert([
                 {
                   user_id: data.user.id,
                   company_id: newCompany.id,
-                  role: 'owner',
+                  role: 'superuser',
                   joined_at: new Date().toISOString(),
                 },
               ]);
@@ -166,10 +166,15 @@ export const useAuthStore = create<AuthState>()(
             if (companyUserError) throw companyUserError;
 
             // Update user's default company
+            await supabase
+              .from('users')
+              .update({ default_company_id: newCompany.id })
+              .eq('id', data.user.id);
+
             Cookies.set('token', data.session.access_token, { expires: 7 });
             set({ 
-              user: newUser, 
-              company: { ...newCompany, user_role: 'owner' },
+              user: { ...newUser, default_company_id: newCompany.id }, 
+              company: { ...newCompany, user_role: 'superuser' },
               token: data.session.access_token, 
               isLoading: false,
               isInitialized: true 
@@ -198,12 +203,12 @@ export const useAuthStore = create<AuthState>()(
               .from('users')
               .select('*')
               .eq('id', session.user.id)
-              .maybeSingle();
+              .single();
 
             if (userData) {
               // Get user's default company
               const { data: companyData } = await supabase
-                .from('company_memberships')
+                .from('company_users')
                 .select(`
                   role,
                   companies (*)
@@ -240,7 +245,7 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           const { data: companyData } = await supabase
-            .from('company_memberships')
+            .from('company_users')
             .select(`
               role,
               companies (*)

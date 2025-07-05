@@ -42,20 +42,14 @@ export const RegisterForm: React.FC = () => {
         formData.password,
         {
           name: formData.companyName,
-          slug: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
           description: formData.companyDescription,
-          website_url: formData.companyDomain ? `https://${formData.companyDomain}` : null,
+          domain: formData.companyDomain,
         }
       );
       toast.success('Company and account created successfully!');
       navigate('/dashboard');
     } catch (error: any) {
-      if (error.message?.includes('User already registered')) {
-        toast.error('This email is already registered. Please log in instead.');
-        setTimeout(() => navigate('/login'), 2000);
-      } else {
-        toast.error(error.message || 'Registration failed');
-      }
+      toast.error(error.message || 'Registration failed');
     }
   };
 

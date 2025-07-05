@@ -21,39 +21,21 @@ export type Database = {
       users: {
         Row: {
           id: string;
-          full_name: string;
+          name: string;
           email: string;
-          avatar_url: string | null;
-          timezone: string | null;
-          locale: string | null;
-          is_active: boolean | null;
-          last_login_at: string | null;
           created_at: string;
-          updated_at: string | null;
         };
         Insert: {
           id: string;
-          full_name: string;
+          name: string;
           email: string;
-          avatar_url?: string | null;
-          timezone?: string | null;
-          locale?: string | null;
-          is_active?: boolean | null;
-          last_login_at?: string | null;
           created_at?: string;
-          updated_at?: string | null;
         };
         Update: {
           id?: string;
-          full_name?: string;
+          name?: string;
           email?: string;
-          avatar_url?: string | null;
-          timezone?: string | null;
-          locale?: string | null;
-          is_active?: boolean | null;
-          last_login_at?: string | null;
           created_at?: string;
-          updated_at?: string | null;
         };
       };
       teams: {

@@ -28,9 +28,24 @@ export const useTagsStore = create<TagsState>((set, get) => ({
         .from('tags')
         .select(`
           *,
-          created_by_user:users!tags_created_by_fkey (*),
-          assigned_user:users!tags_assigned_to_user_fkey (*),
-          assigned_team:teams!tags_assigned_to_team_fkey (*)
+          created_by_user:users!tags_created_by_fkey (
+            id,
+            name,
+            email,
+            created_at
+          ),
+          assigned_user:users!tags_assigned_to_user_fkey (
+            id,
+            name,
+            email,
+            created_at
+          ),
+          assigned_team:teams!tags_assigned_to_team_fkey (
+            id,
+            name,
+            description,
+            created_at
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -65,9 +80,24 @@ export const useTagsStore = create<TagsState>((set, get) => ({
         .from('tags')
         .select(`
           *,
-          created_by_user:users!tags_created_by_fkey (*),
-          assigned_user:users!tags_assigned_to_user_fkey (*),
-          assigned_team:teams!tags_assigned_to_team_fkey (*)
+          created_by_user:users!tags_created_by_fkey (
+            id,
+            name,
+            email,
+            created_at
+          ),
+          assigned_user:users!tags_assigned_to_user_fkey (
+            id,
+            name,
+            email,
+            created_at
+          ),
+          assigned_team:teams!tags_assigned_to_team_fkey (
+            id,
+            name,
+            description,
+            created_at
+          )
         `)
         .eq('id', tagId)
         .single();
@@ -78,7 +108,12 @@ export const useTagsStore = create<TagsState>((set, get) => ({
         .from('tags')
         .select(`
           *,
-          assigned_user:users!tags_assigned_to_user_fkey (*)
+          assigned_user:users!tags_assigned_to_user_fkey (
+            id,
+            name,
+            email,
+            created_at
+          )
         `)
         .eq('parent_tag_id', tagId);
 

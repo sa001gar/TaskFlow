@@ -1,21 +1,14 @@
 export interface User {
   id: string;
-  full_name: string;
+  name: string;
   email: string;
-  avatar_url?: string | null;
-  timezone?: string | null;
-  locale?: string | null;
-  is_active?: boolean | null;
-  last_login_at?: string | null;
   created_at: string;
-  updated_at?: string | null;
   default_company_id?: string;
 }
 
 export interface Company {
   id: string;
   name: string;
-  slug: string;
   description?: string;
   domain?: string;
   logo_url?: string;
@@ -126,22 +119,15 @@ export interface CreateTagRequest {
 }
 
 export interface CreateTeamRequest {
-  website_url?: string | null;
-  logo_url?: string | null;
-  industry?: string | null;
-  company_size?: string | null;
-  settings?: any;
-  is_active?: boolean | null;
+  name: string;
   description?: string;
-  updated_at?: string | null;
   company_id: string;
 }
 
 export interface CreateCompanyRequest {
   name: string;
-  slug: string;
   description?: string;
-  website_url?: string | null;
+  domain?: string;
 }
 
 export interface InviteUserRequest {

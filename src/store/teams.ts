@@ -42,13 +42,32 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
 
       if (error) throw error;
 
-      const teams = data?.filter((item: any) => item.teams).map((item: any) => ({
-        ...item.teams,
-        is_leader: item.is_leader,
-        member_count: 0, // Temporarily set to 0 to avoid RLS recursion
-      })) || [];
+      // Get member counts for each team - filter out null teams first
+      const teamIds = data?.map((item: any) => item.teams?.id).filter(Boolean) || [];
+      
+      if (teamIds.length > 0) {
+        const { data: memberCounts, error: countError } = await supabase
+          .from('user_teams')
+          .select('team_id')
+          .in('team_id', teamIds);
 
-      set({ teams, isLoading: false });
+        if (countError) throw countError;
+
+        const memberCountMap = memberCounts?.reduce((acc: any, item: any) => {
+          acc[item.team_id] = (acc[item.team_id] || 0) + 1;
+          return acc;
+        }, {}) || {};
+
+        const teams = data?.filter((item: any) => item.teams).map((item: any) => ({
+          ...item.teams,
+          is_leader: item.is_leader,
+          member_count: memberCountMap[item.teams.id] || 0,
+        })) || [];
+
+        set({ teams, isLoading: false });
+      } else {
+        set({ teams: [], isLoading: false });
+      }
     } catch (error) {
       set({ isLoading: false });
       throw error;
