@@ -25,7 +25,7 @@ import toast from 'react-hot-toast';
 
 interface UserManagementCardProps {
   users: CompanyUser[];
-  onInviteUser: () => void;
+  onAddUser: () => void;
   onUpdateUserRole: (userId: string, role: CompanyRole) => Promise<void>;
   onRemoveUser: (userId: string, userName: string) => Promise<void>;
   onRequestPasswordReset?: (userId: string) => Promise<void>;
@@ -200,7 +200,7 @@ const getRoleBadgeColor = (role: CompanyRole) => {
 
 export const UserManagementCard: React.FC<UserManagementCardProps> = ({
   users,
-  onInviteUser,
+  onAddUser,
   onUpdateUserRole,
   onRemoveUser,
   onRequestPasswordReset,
@@ -262,11 +262,11 @@ export const UserManagementCard: React.FC<UserManagementCardProps> = ({
               <Button
                 variant="primary"
                 size="sm"
-                onClick={onInviteUser}
+                onClick={onAddUser}
                 className="flex items-center"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Invite User
+                Add User
               </Button>
             )}
           </div>
@@ -278,7 +278,7 @@ export const UserManagementCard: React.FC<UserManagementCardProps> = ({
               <div className="p-6 text-center text-slate-500">
                 <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                 <p>No team members yet</p>
-                <p className="text-sm">Invite users to get started</p>
+                <p className="text-sm">Add users to get started</p>
               </div>
             ) : (
               <div className="space-y-1">

@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { Company, CompanyUser, UserInvitation, InviteUserRequest, CompanyRole } from '../types';
 
+interface CreateUserRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: CompanyRole;
+  teamId?: string;
+}
+
 interface PasswordResetRequest {
   id: string;
   user_id: string;
@@ -31,6 +39,7 @@ interface CompanyState {
   fetchInvitations: (companyId: string) => Promise<void>;
   fetchPasswordResetRequests: (companyId: string) => Promise<void>;
   inviteUser: (invitation: InviteUserRequest) => Promise<void>;
+  createUser: (userData: CreateUserRequest, companyId: string) => Promise<void>;
   updateUserRole: (userId: string, companyId: string, role: CompanyRole) => Promise<void>;
   removeUser: (userId: string, companyId: string) => Promise<void>;
   resendInvitation: (invitationId: string) => Promise<void>;
@@ -222,6 +231,77 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
 
       // Refresh invitations
       await get().fetchInvitations(invitation.company_id);
+      set({ isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  createUser: async (userData: CreateUserRequest, companyId: string) => {
+    set({ isLoading: true });
+    try {
+      // Create user account in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: userData.email,
+        password: userData.password,
+        email_confirm: true,
+        user_metadata: {
+          name: userData.name
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Create user profile
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: authData.user.id,
+              name: userData.name,
+              email: userData.email,
+              default_company_id: companyId
+            }
+          ]);
+
+        if (profileError) throw profileError;
+
+        // Add user to company
+        const { error: companyUserError } = await supabase
+          .from('company_users')
+          .insert([
+            {
+              user_id: authData.user.id,
+              company_id: companyId,
+              role: userData.role,
+              joined_at: new Date().toISOString(),
+              is_active: true
+            }
+          ]);
+
+        if (companyUserError) throw companyUserError;
+
+        // Add to team if specified
+        if (userData.teamId) {
+          const { error: teamError } = await supabase
+            .from('user_teams')
+            .insert([
+              {
+                user_id: authData.user.id,
+                team_id: userData.teamId,
+                is_leader: userData.role === 'leader'
+              }
+            ]);
+
+          if (teamError) throw teamError;
+        }
+
+        // Refresh company users
+        await get().fetchCompanyUsers(companyId);
+      }
+
       set({ isLoading: false });
     } catch (error) {
       set({ isLoading: false });

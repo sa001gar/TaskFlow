@@ -17,10 +17,20 @@ import {
   Shield
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
+import { useNotificationStore } from '../../store/notifications';
 import { Button } from '../ui/Button';
+import { NotificationCenter } from '../ui/Notification';
 
 export const Navbar: React.FC = () => {
   const { user, company, logout } = useAuthStore();
+  const { 
+    notifications, 
+    fetchNotifications, 
+    markAsRead, 
+    markAllAsRead, 
+    dismissNotification,
+    isLoading: notificationsLoading 
+  } = useNotificationStore();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -33,6 +43,12 @@ export const Navbar: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const canManageUsers = company?.user_role && ['superuser', 'admin'].includes(company.user_role);
+
+  React.useEffect(() => {
+    if (user) {
+      fetchNotifications(user.id);
+    }
+  }, [user, fetchNotifications]);
 
   return (
     <nav className="bg-navy border-b border-navy/20 sticky top-0 z-40 shadow-lg">
@@ -73,9 +89,13 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="hidden md:flex md:items-center md:space-x-4">
-            <button className="p-2 text-blue hover:text-white hover:bg-navy/80 rounded-lg transition-colors">
-              <Bell className="w-5 h-5" />
-            </button>
+            <NotificationCenter
+              notifications={notifications}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
+              onDismiss={dismissNotification}
+              isLoading={notificationsLoading}
+            />
 
             {canManageUsers && (
               <Link to="/company/users">

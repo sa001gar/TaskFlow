@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Mail, 
   UserPlus, 
   Shield, 
   Users, 
-  Crown, 
   User,
-  Send,
+  Save,
   X,
+  Eye,
+  EyeOff,
   AlertCircle
 } from 'lucide-react';
 import { CompanyRole } from '../../types';
@@ -16,38 +16,55 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
-import { Textarea } from '../ui/Textarea';
 import { Badge } from '../ui/Badge';
 import { Alert } from '../ui/Alert';
 
-interface InviteUserFormProps {
-  onInvite: (email: string, role: CompanyRole, teamId?: string, message?: string) => Promise<void>;
+interface AddUserFormProps {
+  onAddUser: (name: string, email: string, password: string, role: CompanyRole, teamId?: string) => Promise<void>;
   onCancel: () => void;
   teams?: Array<{ id: string; name: string }>;
   isLoading?: boolean;
 }
 
-export const InviteUserForm: React.FC<InviteUserFormProps> = ({
-  onInvite,
+export const AddUserForm: React.FC<AddUserFormProps> = ({
+  onAddUser,
   onCancel,
   teams = [],
   isLoading = false,
 }) => {
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     role: 'member' as CompanyRole,
     teamId: '',
-    message: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters long';
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
     setErrors(newErrors);
@@ -60,26 +77,29 @@ export const InviteUserForm: React.FC<InviteUserFormProps> = ({
     if (!validateForm()) return;
 
     try {
-      await onInvite(
+      await onAddUser(
+        formData.name.trim(),
         formData.email.trim(),
+        formData.password,
         formData.role,
-        formData.teamId || undefined,
-        formData.message.trim() || undefined
+        formData.teamId || undefined
       );
       
       // Reset form
       setFormData({
+        name: '',
         email: '',
+        password: '',
+        confirmPassword: '',
         role: 'member',
         teamId: '',
-        message: '',
       });
     } catch (error) {
       // Error handling is done in parent component
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -93,6 +113,19 @@ export const InviteUserForm: React.FC<InviteUserFormProps> = ({
         [name]: ''
       }));
     }
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setFormData(prev => ({
+      ...prev,
+      password,
+      confirmPassword: password
+    }));
   };
 
   const roleOptions = [
@@ -131,23 +164,92 @@ export const InviteUserForm: React.FC<InviteUserFormProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center">
             <UserPlus className="w-6 h-6 text-blue mr-3" />
-            Invite New Team Member
+            Add New Team Member
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Input */}
-            <div>
+            {/* Basic Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Full Name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="Enter full name"
+                error={errors.name}
+                required
+              />
+
               <Input
                 label="Email Address"
                 name="email"
                 type="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                placeholder="Enter the user's email address"
+                placeholder="Enter email address"
                 error={errors.email}
                 required
               />
+            </div>
+
+            {/* Password Fields */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-navy">
+                  Password
+                </label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={generatePassword}
+                  className="text-blue hover:text-blue/80"
+                >
+                  Generate Password
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="relative">
+                  <Input
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Enter password"
+                    error={errors.password}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <Input
+                    label="Confirm Password"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    placeholder="Confirm password"
+                    error={errors.confirmPassword}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-9 text-slate-400 hover:text-slate-600"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Role Selection */}
@@ -210,26 +312,14 @@ export const InviteUserForm: React.FC<InviteUserFormProps> = ({
               </div>
             )}
 
-            {/* Personal Message */}
-            <div>
-              <Textarea
-                label="Personal Message (Optional)"
-                name="message"
-                value={formData.message}
-                onChange={handleInputChange}
-                placeholder="Add a personal welcome message for the new team member..."
-                rows={3}
-              />
-            </div>
-
             {/* Info Alert */}
             <Alert>
-              <Mail className="w-4 h-4" />
+              <AlertCircle className="w-4 h-4" />
               <div>
-                <p className="font-medium">Invitation Process</p>
+                <p className="font-medium">Account Creation</p>
                 <p className="text-sm mt-1">
-                  The user will receive an email invitation with instructions to join your company. 
-                  They can accept the invitation and create their account with the {selectedRoleOption?.label.toLowerCase()} role.
+                  The user account will be created immediately with the {selectedRoleOption?.label.toLowerCase()} role. 
+                  Make sure to securely share the login credentials with the new team member.
                 </p>
               </div>
             </Alert>
@@ -251,8 +341,8 @@ export const InviteUserForm: React.FC<InviteUserFormProps> = ({
                 isLoading={isLoading}
                 className="px-8 py-3"
               >
-                <Send className="w-4 h-4 mr-2" />
-                Send Invitation
+                <Save className="w-4 h-4 mr-2" />
+                Add User
               </Button>
             </div>
           </form>
