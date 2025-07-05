@@ -11,73 +11,76 @@ import {
   Menu, 
   X,
   Settings,
-  Bell,
   Building2,
   UserPlus,
   Shield
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
-import { useNotificationStore } from '../../store/notifications';
 import { Button } from '../ui/Button';
-import { NotificationCenter } from '../ui/Notification';
 
 export const Navbar: React.FC = () => {
   const { user, company, logout } = useAuthStore();
-  const { 
-    notifications, 
-    fetchNotifications, 
-    markAsRead, 
-    markAllAsRead, 
-    dismissNotification,
-    isLoading: notificationsLoading 
-  } = useNotificationStore();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Teams', href: '/teams', icon: Users },
-    { name: 'Tasks', href: '/tags', icon: Tag },
+    { name: 'Dashboard', href: user?.role === 'admin' ? '/admin/dashboard' : '/dashboard', icon: Home },
+    { name: 'Teams', href: user?.role === 'admin' ? '/admin/teams' : '/teams', icon: Users },
+    { name: 'Tasks', href: user?.role === 'admin' ? '/admin/tags' : '/tags', icon: Tag },
+  ];
+
+  const adminNavigation = [
+    { name: 'Users', href: '/admin/users', icon: UserPlus },
   ];
 
   const isActive = (path: string) => location.pathname === path;
 
-  const canManageUsers = company?.user_role && ['superuser', 'admin'].includes(company.user_role);
-
-  React.useEffect(() => {
-    if (user) {
-      fetchNotifications(user.id);
-    }
-  }, [user, fetchNotifications]);
-
   return (
-    <nav className="bg-navy border-b border-navy/20 sticky top-0 z-40 shadow-lg">
+    <nav className="bg-primary-dark border-b-2 border-primary-700 sticky top-0 z-40 shadow-strong">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/dashboard" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue rounded-lg flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
+            <Link to={user?.role === 'admin' ? '/admin/dashboard' : '/dashboard'} className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-accent-red rounded-2xl flex items-center justify-center shadow-medium">
+                <Building2 className="w-6 h-6 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="text-lg font-bold text-white">TaskFlow</span>
+                <span className="text-xl font-bold text-white">TaskFlow</span>
                 {company && (
-                  <span className="text-xs text-blue -mt-1">{company.name}</span>
+                  <span className="text-xs text-gray -mt-1">{company.name}</span>
                 )}
               </div>
             </Link>
 
-            <div className="hidden md:ml-10 md:flex md:space-x-1">
+            <div className="hidden md:ml-10 md:flex md:space-x-2">
               {navigation.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    className={`inline-flex items-center px-4 py-2 rounded-2xl text-sm font-semibold transition-all duration-200 ${
                       isActive(item.href)
-                        ? 'bg-blue text-white'
-                        : 'text-blue hover:text-white hover:bg-navy/80'
+                        ? 'bg-accent-red text-white shadow-medium'
+                        : 'text-gray hover:text-white hover:bg-primary-700'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+              
+              {user?.role === 'admin' && adminNavigation.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`inline-flex items-center px-4 py-2 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+                      isActive(item.href)
+                        ? 'bg-accent-red text-white shadow-medium'
+                        : 'text-gray hover:text-white hover:bg-primary-700'
                     }`}
                   >
                     <Icon className="w-4 h-4 mr-2" />
@@ -89,63 +92,44 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="hidden md:flex md:items-center md:space-x-4">
-            <NotificationCenter
-              notifications={notifications}
-              onMarkAsRead={markAsRead}
-              onMarkAllAsRead={markAllAsRead}
-              onDismiss={dismissNotification}
-              isLoading={notificationsLoading}
-            />
-
-            {canManageUsers && (
-              <Link to="/company/users">
-                <Button size="sm" variant="outline" className="flex items-center border-blue text-blue hover:bg-blue hover:text-white">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Manage Users
-                </Button>
-              </Link>
-            )}
-
-            <Link to="/tags/new">
-              <Button size="sm" variant="danger" className="flex items-center">
+            <Link to={user?.role === 'admin' ? '/admin/tags/new' : '/tags/new'}>
+              <Button size="sm" variant="secondary" className="flex items-center">
                 <Plus className="w-4 h-4 mr-2" />
                 New Task
               </Button>
             </Link>
 
             <div className="relative group">
-              <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-navy/80 transition-colors">
-                <div className="w-8 h-8 bg-blue rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
+              <button className="flex items-center space-x-3 p-2 rounded-2xl hover:bg-primary-700 transition-colors">
+                <div className="w-10 h-10 bg-accent-red rounded-2xl flex items-center justify-center shadow-medium">
+                  <User className="w-5 h-5 text-white" />
                 </div>
                 <div className="text-left">
-                  <div className="text-sm font-medium text-white">{user?.name}</div>
-                  {company?.user_role && (
-                    <div className="text-xs text-blue flex items-center">
-                      <Shield className="w-3 h-3 mr-1" />
-                      {company.user_role}
-                    </div>
-                  )}
+                  <div className="text-sm font-semibold text-white">{user?.name}</div>
+                  <div className="text-xs text-gray flex items-center">
+                    <Shield className="w-3 h-3 mr-1" />
+                    {user?.role}
+                  </div>
                 </div>
               </button>
 
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                <div className="px-4 py-2 border-b border-slate-100">
-                  <p className="text-sm font-medium text-navy">{user?.name}</p>
-                  <p className="text-xs text-slate-500">{user?.email}</p>
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-strong border-2 border-gray-200 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className="px-4 py-3 border-b border-light-bg">
+                  <p className="text-sm font-semibold text-primary-dark">{user?.name}</p>
+                  <p className="text-xs text-gray">{user?.email}</p>
                   {company && (
-                    <p className="text-xs text-blue mt-1">{company.name}</p>
+                    <p className="text-xs text-accent-red mt-1 font-medium">{company.name}</p>
                   )}
                 </div>
-                <button className="w-full flex items-center px-4 py-2 text-sm text-navy hover:bg-cream">
-                  <Settings className="w-4 h-4 mr-2" />
+                <button className="w-full flex items-center px-4 py-3 text-sm text-primary-dark hover:bg-light-bg transition-colors">
+                  <Settings className="w-4 h-4 mr-3" />
                   Settings
                 </button>
                 <button
                   onClick={logout}
-                  className="w-full flex items-center px-4 py-2 text-sm text-bright-red hover:bg-red-50"
+                  className="w-full flex items-center px-4 py-3 text-sm text-accent-red hover:bg-red-50 transition-colors"
                 >
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut className="w-4 h-4 mr-3" />
                   Logout
                 </button>
               </div>
@@ -155,7 +139,7 @@ export const Navbar: React.FC = () => {
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-lg text-blue hover:text-white hover:bg-navy/80"
+              className="p-2 rounded-2xl text-gray hover:text-white hover:bg-primary-700 transition-colors"
             >
               {isMobileMenuOpen ? (
                 <X className="w-6 h-6" />
@@ -171,7 +155,7 @@ export const Navbar: React.FC = () => {
       <motion.div
         initial={false}
         animate={{ height: isMobileMenuOpen ? 'auto' : 0 }}
-        className="md:hidden overflow-hidden bg-navy border-t border-navy/20"
+        className="md:hidden overflow-hidden bg-primary-800 border-t border-primary-700"
       >
         <div className="px-4 py-4 space-y-2">
           {navigation.map((item) => {
@@ -180,57 +164,65 @@ export const Navbar: React.FC = () => {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium ${
+                className={`flex items-center px-3 py-3 rounded-2xl text-sm font-semibold transition-colors ${
                   isActive(item.href)
-                    ? 'bg-blue text-white'
-                    : 'text-blue hover:text-white hover:bg-navy/80'
+                    ? 'bg-accent-red text-white'
+                    : 'text-gray hover:text-white hover:bg-primary-700'
                 }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <Icon className="w-4 h-4 mr-3" />
+                <Icon className="w-5 h-5 mr-3" />
+                {item.name}
+              </Link>
+            );
+          })}
+          
+          {user?.role === 'admin' && adminNavigation.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`flex items-center px-3 py-3 rounded-2xl text-sm font-semibold transition-colors ${
+                  isActive(item.href)
+                    ? 'bg-accent-red text-white'
+                    : 'text-gray hover:text-white hover:bg-primary-700'
+                }`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Icon className="w-5 h-5 mr-3" />
                 {item.name}
               </Link>
             );
           })}
           
           <Link
-            to="/tags/new"
-            className="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-bright-red hover:bg-red-50"
+            to={user?.role === 'admin' ? '/admin/tags/new' : '/tags/new'}
+            className="flex items-center px-3 py-3 rounded-2xl text-sm font-semibold text-accent-red hover:bg-red-50 transition-colors"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            <Plus className="w-4 h-4 mr-3" />
+            <Plus className="w-5 h-5 mr-3" />
             New Task
           </Link>
 
-          {canManageUsers && (
-            <Link
-              to="/company/users"
-              className="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-blue hover:bg-blue/10"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <UserPlus className="w-4 h-4 mr-3" />
-              Manage Users
-            </Link>
-          )}
-
-          <div className="border-t border-navy/20 pt-4 mt-4">
-            <div className="flex items-center px-3 py-2">
-              <div className="w-8 h-8 bg-blue rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-white" />
+          <div className="border-t border-primary-700 pt-4 mt-4">
+            <div className="flex items-center px-3 py-3">
+              <div className="w-10 h-10 bg-accent-red rounded-2xl flex items-center justify-center mr-3">
+                <User className="w-5 h-5 text-white" />
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-white">{user?.name}</p>
-                <p className="text-xs text-slate-500">{user?.email}</p>
+              <div>
+                <p className="text-sm font-semibold text-white">{user?.name}</p>
+                <p className="text-xs text-gray">{user?.email}</p>
                 {company && (
-                  <p className="text-xs text-blue">{company.name} • {company.user_role}</p>
+                  <p className="text-xs text-accent-red font-medium">{company.name} • {user?.role}</p>
                 )}
               </div>
             </div>
             <button
               onClick={logout}
-              className="flex items-center w-full px-3 py-2 text-sm text-bright-red hover:bg-red-50 rounded-lg"
+              className="flex items-center w-full px-3 py-3 text-sm text-accent-red hover:bg-red-50 rounded-2xl transition-colors"
             >
-              <LogOut className="w-4 h-4 mr-3" />
+              <LogOut className="w-5 h-5 mr-3" />
               Logout
             </button>
           </div>

@@ -4,23 +4,31 @@ import { motion } from 'framer-motion';
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   hover?: boolean;
+  variant?: 'default' | 'elevated' | 'outlined';
 }
 
 export const Card: React.FC<CardProps> = ({ 
   children, 
   className = '', 
   hover = false,
+  variant = 'default',
   ...props 
 }) => {
+  const variants = {
+    default: 'bg-white shadow-soft border border-gray-200',
+    elevated: 'bg-white shadow-medium border border-gray-200',
+    outlined: 'bg-white border-2 border-primary-dark',
+  };
+
   const Component = hover ? motion.div : 'div';
   const motionProps = hover ? {
-    whileHover: { y: -2, scale: 1.02 },
+    whileHover: { y: -4, scale: 1.02, boxShadow: '0 10px 40px -10px rgba(0, 0, 0, 0.15)' },
     transition: { duration: 0.2 }
   } : {};
 
   return (
     <Component
-      className={`bg-white rounded-xl shadow-sm border border-slate-200 ${className}`}
+      className={`rounded-2xl ${variants[variant]} ${className}`}
       {...motionProps}
       {...props}
     >
@@ -61,22 +69,6 @@ export const CardContent: React.FC<CardContentProps> = ({
   );
 };
 
-interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-}
-
-export const CardFooter: React.FC<CardFooterProps> = ({ 
-  children, 
-  className = '', 
-  ...props 
-}) => {
-  return (
-    <div className={`p-6 pt-4 ${className}`} {...props}>
-      {children}
-    </div>
-  );
-};
-
 interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
   children: React.ReactNode;
 }
@@ -87,24 +79,8 @@ export const CardTitle: React.FC<CardTitleProps> = ({
   ...props 
 }) => {
   return (
-    <h3 className={`text-lg font-semibold text-navy ${className}`} {...props}>
+    <h3 className={`text-xl font-bold text-primary-dark ${className}`} {...props}>
       {children}
     </h3>
-  );
-};
-
-interface CardDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {
-  children: React.ReactNode;
-}
-
-export const CardDescription: React.FC<CardDescriptionProps> = ({ 
-  children, 
-  className = '', 
-  ...props 
-}) => {
-  return (
-    <p className={`text-sm text-slate-600 ${className}`} {...props}>
-      {children}
-    </p>
   );
 };

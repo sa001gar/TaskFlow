@@ -4,26 +4,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Custom color palette
-        'deep-red': '#780000',
-        'bright-red': '#c1121f',
-        'cream': '#fdf0d5',
-        'navy': '#003049',
-        'blue': '#669bbc',
+        // Modern dark-accented color palette
+        'primary-dark': '#2b2d42',
+        'gray': '#8d99ae',
+        'light-bg': '#edf2f4',
+        'accent-red': '#ef233c',
+        'deep-red': '#d80032',
         
         // Semantic color mapping
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#669bbc', // blue
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#003049', // navy
-          950: '#0c1419',
+          50: '#f8f9fa',
+          100: '#edf2f4',
+          200: '#d3d9db',
+          300: '#b9c0c2',
+          400: '#8d99ae',
+          500: '#6c757d',
+          600: '#495057',
+          700: '#343a40',
+          800: '#2b2d42',
+          900: '#212529',
+          950: '#1a1c2e',
         },
         secondary: {
           50: '#fef2f2',
@@ -31,38 +31,38 @@ export default {
           200: '#fecaca',
           300: '#fca5a5',
           400: '#f87171',
-          500: '#c1121f', // bright-red
+          500: '#ef233c',
           600: '#dc2626',
-          700: '#b91c1c',
+          700: '#d80032',
           800: '#991b1b',
-          900: '#780000', // deep-red
+          900: '#7f1d1d',
           950: '#450a0a',
         },
         accent: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#fdf0d5', // cream
-          600: '#d97706',
-          700: '#b45309',
-          800: '#92400e',
-          900: '#78350f',
-          950: '#451a03',
+          50: '#fef7f7',
+          100: '#fef2f2',
+          200: '#fee2e2',
+          300: '#fca5a5',
+          400: '#f87171',
+          500: '#ef233c',
+          600: '#d80032',
+          700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d',
+          950: '#450a0a',
         },
-        background: '#fdf0d5', // cream
-        foreground: '#003049', // navy
+        background: '#edf2f4',
+        foreground: '#2b2d42',
         card: '#ffffff',
-        'card-foreground': '#003049',
+        'card-foreground': '#2b2d42',
         popover: '#ffffff',
-        'popover-foreground': '#003049',
-        muted: '#f1f5f9',
-        'muted-foreground': '#64748b',
-        border: '#e2e8f0',
+        'popover-foreground': '#2b2d42',
+        muted: '#f8f9fa',
+        'muted-foreground': '#8d99ae',
+        border: '#d3d9db',
         input: '#ffffff',
-        ring: '#669bbc',
-        destructive: '#c1121f',
+        ring: '#ef233c',
+        destructive: '#ef233c',
         'destructive-foreground': '#ffffff',
       },
       backdropBlur: {
@@ -73,6 +73,7 @@ export default {
         'slide-up': 'slideUp 0.3s ease-out',
         'slide-down': 'slideDown 0.3s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
         fadeIn: {
@@ -91,6 +92,15 @@ export default {
           '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
+      },
+      borderRadius: {
+        '2xl': '1rem',
+        '3xl': '1.5rem',
+      },
+      boxShadow: {
+        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+        'medium': '0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        'strong': '0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 2px 10px -2px rgba(0, 0, 0, 0.05)',
       },
     },
   },

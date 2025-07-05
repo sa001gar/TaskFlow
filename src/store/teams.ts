@@ -6,15 +6,14 @@ interface TeamsState {
   teams: Team[];
   currentTeam: Team | null;
   isLoading: boolean;
-  fetchTeams: (userId: string) => Promise<void>;
+  fetchTeams: (companyId: string) => Promise<void>;
   fetchTeam: (teamId: string) => Promise<void>;
-  createTeam: (team: CreateTeamRequest, userId: string) => Promise<void>;
+  createTeam: (team: CreateTeamRequest, companyId: string, userId: string) => Promise<void>;
   updateTeam: (teamId: string, updates: Partial<Team>) => Promise<void>;
   deleteTeam: (teamId: string) => Promise<void>;
-  joinTeam: (teamId: string, userId: string) => Promise<void>;
-  leaveTeam: (teamId: string, userId: string) => Promise<void>;
+  addTeamMember: (teamId: string, userId: string, isLeader?: boolean) => Promise<void>;
   removeTeamMember: (teamId: string, userId: string) => Promise<void>;
-  promoteToLeader: (teamId: string, userId: string) => Promise<void>;
+  updateMemberRole: (teamId: string, userId: string, isLeader: boolean) => Promise<void>;
 }
 
 export const useTeamsStore = create<TeamsState>((set, get) => ({
@@ -22,28 +21,23 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
   currentTeam: null,
   isLoading: false,
 
-  fetchTeams: async (userId: string) => {
+  fetchTeams: async (companyId: string) => {
     set({ isLoading: true });
     try {
       const { data, error } = await supabase
-        .from('user_teams')
+        .from('teams')
         .select(`
-          team_id,
-          is_leader,
-          joined_at,
-          teams (
-            id,
-            name,
-            description,
-            created_at
-          )
+          *,
+          created_by_user:users!teams_created_by_fkey(*)
         `)
-        .eq('user_id', userId);
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Get member counts for each team - filter out null teams first
-      const teamIds = data?.map((item: any) => item.teams?.id).filter(Boolean) || [];
+      // Get member counts for each team
+      const teamIds = data?.map(team => team.id) || [];
       
       if (teamIds.length > 0) {
         const { data: memberCounts, error: countError } = await supabase
@@ -58,13 +52,12 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
           return acc;
         }, {}) || {};
 
-        const teams = data?.filter((item: any) => item.teams).map((item: any) => ({
-          ...item.teams,
-          is_leader: item.is_leader,
-          member_count: memberCountMap[item.teams.id] || 0,
+        const teamsWithCounts = data?.map(team => ({
+          ...team,
+          member_count: memberCountMap[team.id] || 0,
         })) || [];
 
-        set({ teams, isLoading: false });
+        set({ teams: teamsWithCounts, isLoading: false });
       } else {
         set({ teams: [], isLoading: false });
       }
@@ -79,7 +72,10 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
     try {
       const { data: teamData, error: teamError } = await supabase
         .from('teams')
-        .select('*')
+        .select(`
+          *,
+          created_by_user:users!teams_created_by_fkey(*)
+        `)
         .eq('id', teamId)
         .single();
 
@@ -88,16 +84,8 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
       const { data: membersData, error: membersError } = await supabase
         .from('user_teams')
         .select(`
-          user_id,
-          team_id,
-          is_leader,
-          joined_at,
-          users (
-            id,
-            name,
-            email,
-            created_at
-          )
+          *,
+          user:users(*)
         `)
         .eq('team_id', teamId);
 
@@ -108,7 +96,7 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
         team_id: item.team_id,
         is_leader: item.is_leader,
         joined_at: item.joined_at,
-        user: item.users,
+        user: item.user,
       })) || [];
 
       const team: Team = {
@@ -124,17 +112,22 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
     }
   },
 
-  createTeam: async (teamData: CreateTeamRequest, userId: string) => {
+  createTeam: async (teamData: CreateTeamRequest, companyId: string, userId: string) => {
     set({ isLoading: true });
     try {
       const { data, error } = await supabase
         .from('teams')
-        .insert([teamData])
+        .insert([{
+          ...teamData,
+          company_id: companyId,
+          created_by: userId,
+        }])
         .select()
         .single();
 
       if (error) throw error;
 
+      // Add creator as team leader
       const { error: memberError } = await supabase
         .from('user_teams')
         .insert([
@@ -147,7 +140,7 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
 
       if (memberError) throw memberError;
 
-      await get().fetchTeams(userId);
+      await get().fetchTeams(companyId);
       set({ isLoading: false });
     } catch (error) {
       set({ isLoading: false });
@@ -188,7 +181,7 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
     try {
       const { error } = await supabase
         .from('teams')
-        .delete()
+        .update({ is_active: false })
         .eq('id', teamId);
 
       if (error) throw error;
@@ -209,7 +202,7 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
     }
   },
 
-  joinTeam: async (teamId: string, userId: string) => {
+  addTeamMember: async (teamId: string, userId: string, isLeader = false) => {
     set({ isLoading: true });
     try {
       const { error } = await supabase
@@ -218,32 +211,13 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
           {
             user_id: userId,
             team_id: teamId,
-            is_leader: false,
+            is_leader: isLeader,
           },
         ]);
 
       if (error) throw error;
 
-      await get().fetchTeams(userId);
-      set({ isLoading: false });
-    } catch (error) {
-      set({ isLoading: false });
-      throw error;
-    }
-  },
-
-  leaveTeam: async (teamId: string, userId: string) => {
-    set({ isLoading: true });
-    try {
-      const { error } = await supabase
-        .from('user_teams')
-        .delete()
-        .eq('team_id', teamId)
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      await get().fetchTeams(userId);
+      await get().fetchTeam(teamId);
       set({ isLoading: false });
     } catch (error) {
       set({ isLoading: false });
@@ -270,12 +244,12 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
     }
   },
 
-  promoteToLeader: async (teamId: string, userId: string) => {
+  updateMemberRole: async (teamId: string, userId: string, isLeader: boolean) => {
     set({ isLoading: true });
     try {
       const { error } = await supabase
         .from('user_teams')
-        .update({ is_leader: true })
+        .update({ is_leader: isLeader })
         .eq('team_id', teamId)
         .eq('user_id', userId);
 

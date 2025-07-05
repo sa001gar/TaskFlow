@@ -1,19 +1,19 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { Tag, TagResponse, CreateTagRequest, TagStatus } from '../types';
+import { Tag, TagComment, CreateTagRequest, TagStatus } from '../types';
 
 interface TagsState {
   tags: Tag[];
   currentTag: Tag | null;
   isLoading: boolean;
-  fetchTags: (userId: string) => Promise<void>;
+  fetchTags: (companyId: string) => Promise<void>;
   fetchTag: (tagId: string) => Promise<void>;
-  createTag: (tag: CreateTagRequest, userId: string) => Promise<void>;
+  createTag: (tag: CreateTagRequest, companyId: string, userId: string) => Promise<void>;
   updateTag: (tagId: string, updates: Partial<Tag>) => Promise<void>;
   deleteTag: (tagId: string) => Promise<void>;
   updateTagStatus: (tagId: string, status: TagStatus) => Promise<void>;
-  addResponse: (tagId: string, userId: string, comment?: string, statusUpdate?: string, timeLogged?: number) => Promise<void>;
-  createSubtask: (parentTagId: string, subtask: CreateTagRequest, userId: string) => Promise<void>;
+  addComment: (tagId: string, userId: string, comment?: string, statusUpdate?: TagStatus, timeLogged?: number) => Promise<void>;
+  createSubtask: (parentTagId: string, subtask: CreateTagRequest, companyId: string, userId: string) => Promise<void>;
 }
 
 export const useTagsStore = create<TagsState>((set, get) => ({
@@ -21,32 +21,18 @@ export const useTagsStore = create<TagsState>((set, get) => ({
   currentTag: null,
   isLoading: false,
 
-  fetchTags: async (userId: string) => {
+  fetchTags: async (companyId: string) => {
     set({ isLoading: true });
     try {
       const { data, error } = await supabase
         .from('tags')
         .select(`
           *,
-          created_by_user:users!tags_created_by_fkey (
-            id,
-            name,
-            email,
-            created_at
-          ),
-          assigned_user:users!tags_assigned_to_user_fkey (
-            id,
-            name,
-            email,
-            created_at
-          ),
-          assigned_team:teams!tags_assigned_to_team_fkey (
-            id,
-            name,
-            description,
-            created_at
-          )
+          created_by_user:users!tags_created_by_fkey(*),
+          assigned_user:users!tags_assigned_to_user_id_fkey(*),
+          assigned_team:teams!tags_assigned_to_team_id_fkey(*)
         `)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -56,7 +42,7 @@ export const useTagsStore = create<TagsState>((set, get) => ({
         (data || []).map(async (tag) => {
           const { data: subtasks } = await supabase
             .from('tags')
-            .select('id, status')
+            .select('id, status, title, priority')
             .eq('parent_tag_id', tag.id);
 
           return {
@@ -80,24 +66,9 @@ export const useTagsStore = create<TagsState>((set, get) => ({
         .from('tags')
         .select(`
           *,
-          created_by_user:users!tags_created_by_fkey (
-            id,
-            name,
-            email,
-            created_at
-          ),
-          assigned_user:users!tags_assigned_to_user_fkey (
-            id,
-            name,
-            email,
-            created_at
-          ),
-          assigned_team:teams!tags_assigned_to_team_fkey (
-            id,
-            name,
-            description,
-            created_at
-          )
+          created_by_user:users!tags_created_by_fkey(*),
+          assigned_user:users!tags_assigned_to_user_id_fkey(*),
+          assigned_team:teams!tags_assigned_to_team_id_fkey(*)
         `)
         .eq('id', tagId)
         .single();
@@ -108,37 +79,27 @@ export const useTagsStore = create<TagsState>((set, get) => ({
         .from('tags')
         .select(`
           *,
-          assigned_user:users!tags_assigned_to_user_fkey (
-            id,
-            name,
-            email,
-            created_at
-          )
+          assigned_user:users!tags_assigned_to_user_id_fkey(*)
         `)
         .eq('parent_tag_id', tagId);
 
       if (subtasksError) throw subtasksError;
 
-      const { data: responsesData, error: responsesError } = await supabase
-        .from('tag_responses')
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('tag_comments')
         .select(`
           *,
-          user:users (
-            id,
-            name,
-            email,
-            created_at
-          )
+          user:users(*)
         `)
         .eq('tag_id', tagId)
         .order('created_at', { ascending: true });
 
-      if (responsesError) throw responsesError;
+      if (commentsError) throw commentsError;
 
       const tag: Tag = {
         ...tagData,
         subtasks: subtasksData || [],
-        responses: responsesData || [],
+        comments: commentsData || [],
       };
 
       set({ currentTag: tag, isLoading: false });
@@ -148,7 +109,7 @@ export const useTagsStore = create<TagsState>((set, get) => ({
     }
   },
 
-  createTag: async (tagData: CreateTagRequest, userId: string) => {
+  createTag: async (tagData: CreateTagRequest, companyId: string, userId: string) => {
     set({ isLoading: true });
     try {
       const { error } = await supabase
@@ -156,13 +117,14 @@ export const useTagsStore = create<TagsState>((set, get) => ({
         .insert([
           {
             ...tagData,
+            company_id: companyId,
             created_by: userId,
           },
         ]);
 
       if (error) throw error;
 
-      await get().fetchTags(userId);
+      await get().fetchTags(companyId);
       set({ isLoading: false });
     } catch (error) {
       set({ isLoading: false });
@@ -252,11 +214,11 @@ export const useTagsStore = create<TagsState>((set, get) => ({
     }
   },
 
-  addResponse: async (tagId: string, userId: string, comment?: string, statusUpdate?: string, timeLogged?: number) => {
+  addComment: async (tagId: string, userId: string, comment?: string, statusUpdate?: TagStatus, timeLogged?: number) => {
     set({ isLoading: true });
     try {
       const { error } = await supabase
-        .from('tag_responses')
+        .from('tag_comments')
         .insert([
           {
             tag_id: tagId,
@@ -270,7 +232,7 @@ export const useTagsStore = create<TagsState>((set, get) => ({
       if (error) throw error;
 
       if (statusUpdate) {
-        await get().updateTagStatus(tagId, statusUpdate as TagStatus);
+        await get().updateTagStatus(tagId, statusUpdate);
       } else {
         await get().fetchTag(tagId);
       }
@@ -282,7 +244,7 @@ export const useTagsStore = create<TagsState>((set, get) => ({
     }
   },
 
-  createSubtask: async (parentTagId: string, subtaskData: CreateTagRequest, userId: string) => {
+  createSubtask: async (parentTagId: string, subtaskData: CreateTagRequest, companyId: string, userId: string) => {
     set({ isLoading: true });
     try {
       const { error } = await supabase
@@ -291,6 +253,7 @@ export const useTagsStore = create<TagsState>((set, get) => ({
           {
             ...subtaskData,
             parent_tag_id: parentTagId,
+            company_id: companyId,
             created_by: userId,
           },
         ]);

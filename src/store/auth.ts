@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 import { User, Company, CreateCompanyRequest } from '../types';
-import Cookies from 'js-cookie';
 
 interface AuthState {
   user: User | null;
@@ -14,7 +13,6 @@ interface AuthState {
   register: (name: string, email: string, password: string, company: CreateCompanyRequest) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
-  switchCompany: (companyId: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -40,70 +38,22 @@ export const useAuthStore = create<AuthState>()(
             // Get user profile from users table
             const { data: userData, error: userError } = await supabase
               .from('users')
-              .select('*')
+              .select(`
+                *,
+                company:companies(*)
+              `)
               .eq('id', data.user.id)
               .single();
 
-            if (userError) {
-              // Create user profile if it doesn't exist
-              const { data: newUser, error: insertError } = await supabase
-                .from('users')
-                .insert([
-                  {
-                    id: data.user.id,
-                    name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
-                    email: data.user.email!,
-                  },
-                ])
-                .select()
-                .single();
+            if (userError) throw userError;
 
-              if (insertError) throw insertError;
-              
-              // Get user's default company
-              const { data: companyData } = await supabase
-                .from('company_users')
-                .select(`
-                  role,
-                  companies (*)
-                `)
-                .eq('user_id', data.user.id)
-                .eq('is_active', true)
-                .order('role', { ascending: true })
-                .limit(1)
-                .maybeSingle();
-
-              Cookies.set('token', data.session.access_token, { expires: 7 });
-              set({ 
-                user: newUser, 
-                company: companyData?.companies ? { ...companyData.companies, user_role: companyData.role } : null,
-                token: data.session.access_token, 
-                isLoading: false,
-                isInitialized: true 
-              });
-            } else {
-              // Get user's default company
-              const { data: companyData } = await supabase
-                .from('company_users')
-                .select(`
-                  role,
-                  companies (*)
-                `)
-                .eq('user_id', data.user.id)
-                .eq('is_active', true)
-                .order('role', { ascending: true })
-                .limit(1)
-                .maybeSingle();
-
-              Cookies.set('token', data.session.access_token, { expires: 7 });
-              set({ 
-                user: userData, 
-                company: companyData?.companies ? { ...companyData.companies, user_role: companyData.role } : null,
-                token: data.session.access_token, 
-                isLoading: false,
-                isInitialized: true 
-              });
-            }
+            set({ 
+              user: userData, 
+              company: userData.company,
+              token: data.session.access_token, 
+              isLoading: false,
+              isInitialized: true 
+            });
           }
         } catch (error) {
           set({ isLoading: false });
@@ -114,6 +64,16 @@ export const useAuthStore = create<AuthState>()(
       register: async (name: string, email: string, password: string, companyData: CreateCompanyRequest) => {
         set({ isLoading: true });
         try {
+          // Create company first
+          const { data: newCompany, error: companyError } = await supabase
+            .from('companies')
+            .insert([companyData])
+            .select()
+            .single();
+
+          if (companyError) throw companyError;
+
+          // Create user account in Supabase Auth
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -135,6 +95,8 @@ export const useAuthStore = create<AuthState>()(
                   id: data.user.id,
                   name,
                   email,
+                  role: 'admin',
+                  company_id: newCompany.id,
                 },
               ])
               .select()
@@ -142,39 +104,9 @@ export const useAuthStore = create<AuthState>()(
 
             if (insertError) throw insertError;
 
-            // Create company
-            const { data: newCompany, error: companyError } = await supabase
-              .from('companies')
-              .insert([companyData])
-              .select()
-              .single();
-
-            if (companyError) throw companyError;
-
-            // Add user as superuser of the company
-            const { error: companyUserError } = await supabase
-              .from('company_users')
-              .insert([
-                {
-                  user_id: data.user.id,
-                  company_id: newCompany.id,
-                  role: 'superuser',
-                  joined_at: new Date().toISOString(),
-                },
-              ]);
-
-            if (companyUserError) throw companyUserError;
-
-            // Update user's default company
-            await supabase
-              .from('users')
-              .update({ default_company_id: newCompany.id })
-              .eq('id', data.user.id);
-
-            Cookies.set('token', data.session.access_token, { expires: 7 });
             set({ 
-              user: { ...newUser, default_company_id: newCompany.id }, 
-              company: { ...newCompany, user_role: 'superuser' },
+              user: newUser, 
+              company: newCompany,
               token: data.session.access_token, 
               isLoading: false,
               isInitialized: true 
@@ -188,7 +120,6 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         await supabase.auth.signOut();
-        Cookies.remove('token');
         set({ user: null, company: null, token: null, isInitialized: true });
       },
 
@@ -201,28 +132,17 @@ export const useAuthStore = create<AuthState>()(
           if (session?.user) {
             const { data: userData } = await supabase
               .from('users')
-              .select('*')
+              .select(`
+                *,
+                company:companies(*)
+              `)
               .eq('id', session.user.id)
               .single();
 
             if (userData) {
-              // Get user's default company
-              const { data: companyData } = await supabase
-                .from('company_users')
-                .select(`
-                  role,
-                  companies (*)
-                `)
-                .eq('user_id', session.user.id)
-                .eq('is_active', true)
-                .order('role', { ascending: true })
-                .limit(1)
-                .maybeSingle();
-
-              Cookies.set('token', session.access_token, { expires: 7 });
               set({ 
                 user: userData, 
-                company: companyData?.companies ? { ...companyData.companies, user_role: companyData.role } : null,
+                company: userData.company,
                 token: session.access_token,
                 isInitialized: true 
               });
@@ -234,35 +154,7 @@ export const useAuthStore = create<AuthState>()(
           }
         } catch (error) {
           console.error('Auth check failed:', error);
-          Cookies.remove('token');
           set({ user: null, company: null, token: null, isInitialized: true });
-        }
-      },
-
-      switchCompany: async (companyId: string) => {
-        const { user } = get();
-        if (!user) return;
-
-        try {
-          const { data: companyData } = await supabase
-            .from('company_users')
-            .select(`
-              role,
-              companies (*)
-            `)
-            .eq('user_id', user.id)
-            .eq('company_id', companyId)
-            .eq('is_active', true)
-            .single();
-
-          if (companyData?.companies) {
-            set({ 
-              company: { ...companyData.companies, user_role: companyData.role }
-            });
-          }
-        } catch (error) {
-          console.error('Failed to switch company:', error);
-          throw error;
         }
       },
     }),
