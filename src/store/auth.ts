@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
                 .insert([
                   {
                     id: data.user.id,
-                    name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+                    full_name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
                     email: data.user.email!,
                   },
                 ])
@@ -133,7 +133,7 @@ export const useAuthStore = create<AuthState>()(
               .insert([
                 {
                   id: data.user.id,
-                  name,
+                  full_name: name,
                   email,
                 },
               ])
@@ -166,11 +166,6 @@ export const useAuthStore = create<AuthState>()(
             if (companyUserError) throw companyUserError;
 
             // Update user's default company
-            await supabase
-              .from('users')
-              .update({ default_company_id: newCompany.id })
-              .eq('id', data.user.id);
-
             Cookies.set('token', data.session.access_token, { expires: 7 });
             set({ 
               user: newUser, 
