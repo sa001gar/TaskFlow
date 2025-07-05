@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   children: React.ReactNode;
@@ -21,11 +21,12 @@ export const Button: React.FC<ButtonProps> = ({
   const baseClasses = 'relative inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variants = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 shadow-sm hover:shadow-md',
-    secondary: 'bg-slate-600 text-white hover:bg-slate-700 focus:ring-slate-500 shadow-sm hover:shadow-md',
-    outline: 'border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 focus:ring-slate-500',
-    ghost: 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 focus:ring-slate-500',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm hover:shadow-md',
+    primary: 'bg-navy text-white hover:bg-navy/90 focus:ring-blue shadow-sm hover:shadow-md',
+    secondary: 'bg-blue text-white hover:bg-blue/90 focus:ring-blue shadow-sm hover:shadow-md',
+    outline: 'border border-navy text-navy hover:bg-navy hover:text-white focus:ring-blue',
+    ghost: 'text-navy hover:text-navy/80 hover:bg-cream focus:ring-blue',
+    danger: 'bg-deep-red text-white hover:bg-bright-red focus:ring-bright-red shadow-sm hover:shadow-md',
+    success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 shadow-sm hover:shadow-md',
   };
   
   const sizes = {

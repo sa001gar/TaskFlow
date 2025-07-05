@@ -4,38 +4,66 @@ import { motion } from 'framer-motion';
 import { 
   Tag, 
   Plus, 
-  Search, 
-  Filter,
-  SortAsc,
-  Calendar,
-  User,
-  Users,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  XCircle
+  Calendar
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useTagsStore } from '../store/tags';
-import { TagCard } from '../components/tags/TagCard';
+import { TaskCard } from '../components/tasks/TaskCard';
+import { TaskFilters } from '../components/tasks/TaskFilters';
+import { TaskStatusTabs } from '../components/tasks/TaskStatusTabs';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { Dialog } from '../ui/Dialog';
+import { TaskForm } from '../components/tasks/TaskForm';
 import { TagStatus, TagPriority } from '../types';
+import toast from 'react-hot-toast';
 
 export const Tags: React.FC = () => {
   const { user } = useAuthStore();
-  const { tags, fetchTags, isLoading } = useTagsStore();
+  const { tags, fetchTags, updateTag, deleteTag, isLoading } = useTagsStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<TagStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TagPriority | 'all'>('all');
   const [sortBy, setSortBy] = useState<'created_at' | 'due_date' | 'priority' | 'status'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [editingTask, setEditingTask] = useState<Tag | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchTags(user.id);
     }
   }, [user, fetchTags]);
+
+  const handleEditTask = (task: Tag) => {
+    setEditingTask(task);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateTask = async (data: any) => {
+    if (!editingTask) return;
+
+    try {
+      await updateTag(editingTask.id, data);
+      toast.success('Task updated successfully!');
+      setIsEditDialogOpen(false);
+      setEditingTask(null);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update task');
+    }
+  };
+
+  const handleDeleteTask = async (task: Tag) => {
+    if (!window.confirm(`Are you sure you want to delete "${task.title}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteTag(task.id);
+      toast.success('Task deleted successfully!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete task');
+    }
+  };
 
   const filteredAndSortedTags = tags
     .filter(tag => {
@@ -81,36 +109,21 @@ export const Tags: React.FC = () => {
     Rejected: tags.filter(t => t.status === 'Rejected').length,
   };
 
-  const getStatusIcon = (status: TagStatus | 'all') => {
-    switch (status) {
-      case 'Pending': return AlertCircle;
-      case 'Accepted': return CheckCircle;
-      case 'In Progress': return Clock;
-      case 'Completed': return CheckCircle;
-      case 'Rejected': return XCircle;
-      default: return Tag;
-    }
-  };
-
-  const getStatusColor = (status: TagStatus | 'all') => {
-    switch (status) {
-      case 'Pending': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'Accepted': return 'text-blue-600 bg-blue-50 border-blue-200';
-      case 'In Progress': return 'text-purple-600 bg-purple-50 border-purple-200';
-      case 'Completed': return 'text-green-600 bg-green-50 border-green-200';
-      case 'Rejected': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-slate-600 bg-slate-50 border-slate-200';
-    }
+  const canEditTask = (task: Tag) => {
+    return user && (
+      task.created_by === user.id || 
+      task.assigned_to_user === user.id
+    );
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
           <div className="mb-6 lg:mb-0">
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center">
-              <Tag className="w-8 h-8 mr-3 text-blue-600" />
+            <h1 className="text-3xl font-bold text-navy flex items-center">
+              <Tag className="w-8 h-8 mr-3 text-blue" />
               Tasks
             </h1>
             <p className="text-slate-600 mt-2">
@@ -118,7 +131,7 @@ export const Tags: React.FC = () => {
             </p>
           </div>
           <Link to="/tags/new">
-            <Button className="flex items-center bg-blue-600 hover:bg-blue-700">
+            <Button variant="danger" className="flex items-center">
               <Plus className="w-5 h-5 mr-2" />
               Create Task
             </Button>
@@ -126,72 +139,26 @@ export const Tags: React.FC = () => {
         </div>
 
         {/* Status Filter Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {(Object.keys(statusCounts) as (keyof typeof statusCounts)[]).map((status) => {
-            const StatusIcon = getStatusIcon(status as TagStatus | 'all');
-            const isActive = statusFilter === status;
-            
-            return (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status as TagStatus | 'all')}
-                className={`flex items-center px-4 py-2 rounded-lg border font-medium text-sm transition-colors ${
-                  isActive 
-                    ? getStatusColor(status as TagStatus | 'all')
-                    : 'text-slate-600 bg-white border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <StatusIcon className="w-4 h-4 mr-2" />
-                {status === 'all' ? 'All' : status} ({statusCounts[status]})
-              </button>
-            );
-          })}
-        </div>
+        <TaskStatusTabs
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          statusCounts={statusCounts}
+        />
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <Input
-                placeholder="Search tasks..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value as TagPriority | 'all')}
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">All Priorities</option>
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="created_at">Created Date</option>
-              <option value="due_date">Due Date</option>
-              <option value="priority">Priority</option>
-              <option value="status">Status</option>
-            </select>
-
-            <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="flex items-center justify-center px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-            >
-              <SortAsc className={`w-5 h-5 ${sortOrder === 'desc' ? 'rotate-180' : ''} transition-transform`} />
-              <span className="ml-2">{sortOrder === 'asc' ? 'Ascending' : 'Descending'}</span>
-            </button>
-          </div>
+        <div className="mb-8">
+          <TaskFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            priorityFilter={priorityFilter}
+            onPriorityFilterChange={setPriorityFilter}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderChange={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+          />
         </div>
 
         {/* Tasks Grid */}
@@ -208,8 +175,15 @@ export const Tags: React.FC = () => {
           </div>
         ) : filteredAndSortedTags.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAndSortedTags.map((tag, index) => (
-              <TagCard key={tag.id} tag={tag} index={index} />
+            {filteredAndSortedTags.map((task, index) => (
+              <TaskCard 
+                key={task.id} 
+                task={task} 
+                index={index}
+                onEdit={handleEditTask}
+                onDelete={handleDeleteTask}
+                canEdit={canEditTask(task)}
+              />
             ))}
           </div>
         ) : (
@@ -219,7 +193,7 @@ export const Tags: React.FC = () => {
             className="text-center py-16 bg-white rounded-xl border border-slate-200"
           >
             <Tag className="w-20 h-20 text-slate-300 mx-auto mb-6" />
-            <h3 className="text-xl font-semibold text-slate-900 mb-3">
+            <h3 className="text-xl font-semibold text-navy mb-3">
               {searchTerm || statusFilter !== 'all' || priorityFilter !== 'all' 
                 ? 'No tasks found' 
                 : 'No tasks yet'
@@ -232,13 +206,44 @@ export const Tags: React.FC = () => {
               }
             </p>
             <Link to="/tags/new">
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button variant="danger">
                 <Plus className="w-5 h-5 mr-2" />
                 Create Your First Task
               </Button>
             </Link>
           </motion.div>
         )}
+
+        {/* Edit Task Dialog */}
+        <Dialog
+          isOpen={isEditDialogOpen}
+          onClose={() => {
+            setIsEditDialogOpen(false);
+            setEditingTask(null);
+          }}
+          size="xl"
+        >
+          {editingTask && (
+            <TaskForm
+              onSubmit={handleUpdateTask}
+              onCancel={() => {
+                setIsEditDialogOpen(false);
+                setEditingTask(null);
+              }}
+              isLoading={isLoading}
+              initialData={{
+                title: editingTask.title,
+                description: editingTask.description,
+                link: editingTask.link,
+                priority: editingTask.priority,
+                assigned_to_team: editingTask.assigned_to_team,
+                due_date: editingTask.due_date,
+                estimated_hours: editingTask.estimated_hours,
+              }}
+              mode="edit"
+            />
+          )}
+        </Dialog>
       </div>
     </div>
   );

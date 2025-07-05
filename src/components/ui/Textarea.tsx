@@ -1,11 +1,11 @@
 import React from 'react';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
 }
 
-export const Input: React.FC<InputProps> = ({
+export const Textarea: React.FC<TextareaProps> = ({
   label,
   error,
   className = '',
@@ -18,8 +18,8 @@ export const Input: React.FC<InputProps> = ({
           {label}
         </label>
       )}
-      <input
-        className={`w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent transition-colors duration-200 text-navy ${
+      <textarea
+        className={`w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent transition-colors duration-200 resize-none text-navy ${
           error ? 'border-bright-red focus:ring-bright-red' : ''
         } ${className}`}
         {...props}
