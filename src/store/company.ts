@@ -97,7 +97,7 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
         .from('company_users')
         .select(`
           *,
-          user:users (
+          user:users!company_users_user_id_fkey (
             id,
             name,
             email,
