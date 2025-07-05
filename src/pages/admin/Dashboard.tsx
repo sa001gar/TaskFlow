@@ -98,7 +98,7 @@ export const AdminDashboard: React.FC = () => {
                   Add User
                 </Button>
               </Link>
-              <Link to="/admin/tags/new">
+              <Link to="/tags/new">
                 <Button size="md" variant="secondary" className="flex items-center">
                   <Plus className="w-5 h-5 mr-2" />
                   New Task
@@ -195,7 +195,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </Link>
                 
-                <Link to="/admin/tags" className="group">
+                <Link to="/tags" className="group">
                   <div className="p-6 bg-gradient-to-br from-green-500/5 to-green-500/10 rounded-2xl border-2 border-green-500/20 hover:border-green-500/40 transition-all duration-200 group-hover:shadow-medium">
                     <div className="flex items-center">
                       <div className="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center mr-4 shadow-medium">
@@ -228,7 +228,7 @@ export const AdminDashboard: React.FC = () => {
                     <Tag className="w-6 h-6 mr-3 text-accent-red" />
                     Recent Tasks
                   </CardTitle>
-                  <Link to="/admin/tags" className="text-accent-red hover:text-deep-red font-semibold text-sm">
+                  <Link to="/tags" className="text-accent-red hover:text-deep-red font-semibold text-sm">
                     View All
                   </Link>
                 </div>
