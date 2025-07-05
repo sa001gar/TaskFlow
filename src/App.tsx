@@ -10,7 +10,6 @@ import { Register } from './pages/Register';
 import { AdminDashboard } from './pages/admin/Dashboard';
 import { AdminTeams } from './pages/admin/Teams';
 import { AdminUsers } from './pages/admin/Users';
-import { AdminTags } from './pages/admin/Tags';
 
 // Staff pages
 import { StaffDashboard } from './pages/staff/Dashboard';
@@ -75,15 +74,6 @@ function App() {
               <ProtectedRoute requiredRole="admin">
                 <Navbar />
                 <AdminUsers />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/tags"
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <Navbar />
-                <AdminTags />
               </ProtectedRoute>
             }
           />

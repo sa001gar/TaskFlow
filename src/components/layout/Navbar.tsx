@@ -26,7 +26,7 @@ export const Navbar: React.FC = () => {
   const navigation = [
     { name: 'Dashboard', href: user?.role === 'admin' ? '/admin/dashboard' : '/dashboard', icon: Home },
     { name: 'Teams', href: user?.role === 'admin' ? '/admin/teams' : '/teams', icon: Users },
-    { name: 'Tasks', href: user?.role === 'admin' ? '/admin/tags' : '/tags', icon: Tag },
+    { name: 'Tasks', href: '/tags', icon: Tag },
   ];
 
   const adminNavigation = [
@@ -92,7 +92,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="hidden md:flex md:items-center md:space-x-4">
-            <Link to={user?.role === 'admin' ? '/admin/tags/new' : '/tags/new'}>
+            <Link to="/tags/new">
               <Button size="sm" variant="secondary" className="flex items-center">
                 <Plus className="w-4 h-4 mr-2" />
                 New Task
@@ -197,7 +197,7 @@ export const Navbar: React.FC = () => {
           })}
           
           <Link
-            to={user?.role === 'admin' ? '/admin/tags/new' : '/tags/new'}
+            to="/tags/new"
             className="flex items-center px-3 py-3 rounded-2xl text-sm font-semibold text-accent-red hover:bg-red-50 transition-colors"
             onClick={() => setIsMobileMenuOpen(false)}
           >
