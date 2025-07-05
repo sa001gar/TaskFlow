@@ -12,7 +12,7 @@ import { TaskCard } from '../components/tasks/TaskCard';
 import { TaskFilters } from '../components/tasks/TaskFilters';
 import { TaskStatusTabs } from '../components/tasks/TaskStatusTabs';
 import { Button } from '../components/ui/Button';
-import { Dialog } from '../ui/Dialog';
+import { Dialog } from '../components/ui/Dialog';
 import { TaskForm } from '../components/tasks/TaskForm';
 import { TagStatus, TagPriority } from '../types';
 import toast from 'react-hot-toast';
