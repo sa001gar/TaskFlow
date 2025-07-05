@@ -42,7 +42,7 @@ export const useAuthStore = create<AuthState>()(
               .from('users')
               .select('*')
               .eq('id', data.user.id)
-              .single();
+              .maybeSingle();
 
             if (userError) {
               // Create user profile if it doesn't exist
@@ -62,7 +62,7 @@ export const useAuthStore = create<AuthState>()(
               
               // Get user's default company
               const { data: companyData } = await supabase
-                .from('company_users')
+                .from('company_memberships')
                 .select(`
                   role,
                   companies (*)
@@ -84,7 +84,7 @@ export const useAuthStore = create<AuthState>()(
             } else {
               // Get user's default company
               const { data: companyData } = await supabase
-                .from('company_users')
+                .from('company_memberships')
                 .select(`
                   role,
                   companies (*)
@@ -153,12 +153,12 @@ export const useAuthStore = create<AuthState>()(
 
             // Add user as superuser of the company
             const { error: companyUserError } = await supabase
-              .from('company_users')
+              .from('company_memberships')
               .insert([
                 {
                   user_id: data.user.id,
                   company_id: newCompany.id,
-                  role: 'superuser',
+                  role: 'owner',
                   joined_at: new Date().toISOString(),
                 },
               ]);
@@ -173,8 +173,8 @@ export const useAuthStore = create<AuthState>()(
 
             Cookies.set('token', data.session.access_token, { expires: 7 });
             set({ 
-              user: { ...newUser, default_company_id: newCompany.id }, 
-              company: { ...newCompany, user_role: 'superuser' },
+              user: newUser, 
+              company: { ...newCompany, user_role: 'owner' },
               token: data.session.access_token, 
               isLoading: false,
               isInitialized: true 
@@ -203,12 +203,12 @@ export const useAuthStore = create<AuthState>()(
               .from('users')
               .select('*')
               .eq('id', session.user.id)
-              .single();
+              .maybeSingle();
 
             if (userData) {
               // Get user's default company
               const { data: companyData } = await supabase
-                .from('company_users')
+                .from('company_memberships')
                 .select(`
                   role,
                   companies (*)
@@ -245,7 +245,7 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           const { data: companyData } = await supabase
-            .from('company_users')
+            .from('company_memberships')
             .select(`
               role,
               companies (*)
