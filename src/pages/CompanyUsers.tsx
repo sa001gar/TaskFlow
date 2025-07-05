@@ -9,7 +9,9 @@ import {
   Mail,
   Calendar,
   ArrowLeft,
-  Building2
+  Building2,
+  Key,
+  RefreshCw
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useCompanyStore } from '../store/company';
@@ -22,6 +24,7 @@ import { Dialog } from '../components/ui/Dialog';
 import { UserManagementCard } from '../components/company/UserManagementCard';
 import { InviteUserForm } from '../components/company/InviteUserForm';
 import { PendingInvitationsCard } from '../components/company/PendingInvitationsCard';
+import { PasswordResetCard } from '../components/company/PasswordResetCard';
 import { CompanyRole } from '../types';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -30,14 +33,18 @@ export const CompanyUsers: React.FC = () => {
   const { user, company } = useAuthStore();
   const { 
     companyUsers, 
-    invitations, 
+    invitations,
+    passwordResetRequests,
     fetchCompanyUsers, 
-    fetchInvitations, 
+    fetchInvitations,
+    fetchPasswordResetRequests,
     inviteUser, 
     updateUserRole, 
     removeUser,
     resendInvitation,
     cancelInvitation,
+    requestPasswordReset,
+    generateTemporaryPassword,
     isLoading 
   } = useCompanyStore();
   const { teams, fetchTeams } = useTeamsStore();
@@ -48,9 +55,10 @@ export const CompanyUsers: React.FC = () => {
     if (user && company) {
       fetchCompanyUsers(company.id);
       fetchInvitations(company.id);
+      fetchPasswordResetRequests(company.id);
       fetchTeams(user.id);
     }
-  }, [user, company, fetchCompanyUsers, fetchInvitations, fetchTeams]);
+  }, [user, company, fetchCompanyUsers, fetchInvitations, fetchPasswordResetRequests, fetchTeams]);
 
   const handleInviteUser = async (email: string, role: CompanyRole, teamId?: string, message?: string) => {
     if (!company || !user) return;
@@ -113,6 +121,26 @@ export const CompanyUsers: React.FC = () => {
     }
   };
 
+  const handleRequestPasswordReset = async (userId: string) => {
+    if (!company) return;
+
+    try {
+      await requestPasswordReset(userId, company.id);
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
+  const handleGenerateTemporaryPassword = async (userId: string) => {
+    if (!company) return '';
+
+    try {
+      return await generateTemporaryPassword(userId, company.id);
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
   const canManageUsers = company?.user_role && ['superuser', 'admin'].includes(company.user_role);
 
   if (!canManageUsers) {
@@ -134,49 +162,60 @@ export const CompanyUsers: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen bg-gradient-to-br from-cream via-white to-blue-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
           <div className="flex items-center mb-4">
             <Link to="/dashboard">
-              <Button variant="ghost" size="sm" className="mr-4">
+              <Button variant="ghost" size="sm" className="mr-4 hover:bg-white/50">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
             </Link>
             <div className="flex items-center">
-              <Building2 className="w-8 h-8 text-blue mr-3" />
+              <div className="w-12 h-12 bg-gradient-to-br from-blue to-purple-600 rounded-xl flex items-center justify-center mr-4">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
               <div>
                 <h1 className="text-3xl font-bold text-navy">User Management</h1>
                 <p className="text-slate-600 mt-1">
-                  Manage your team members and their permissions
+                  Manage your team members, permissions, and security
                 </p>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8"
+        >
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Users</p>
-                  <p className="text-2xl font-bold text-navy">{companyUsers.length}</p>
+                  <p className="text-sm font-medium text-blue-700">Total Users</p>
+                  <p className="text-2xl font-bold text-blue-900">{companyUsers.length}</p>
                 </div>
-                <Users className="w-8 h-8 text-blue" />
+                <Users className="w-8 h-8 text-blue-600" />
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Admins</p>
-                  <p className="text-2xl font-bold text-navy">
+                  <p className="text-sm font-medium text-purple-700">Admins</p>
+                  <p className="text-2xl font-bold text-purple-900">
                     {companyUsers.filter(u => ['superuser', 'admin'].includes(u.role)).length}
                   </p>
                 </div>
@@ -185,12 +224,12 @@ export const CompanyUsers: React.FC = () => {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Team Leaders</p>
-                  <p className="text-2xl font-bold text-navy">
+                  <p className="text-sm font-medium text-green-700">Team Leaders</p>
+                  <p className="text-2xl font-bold text-green-900">
                     {companyUsers.filter(u => u.role === 'leader').length}
                   </p>
                 </div>
@@ -199,42 +238,73 @@ export const CompanyUsers: React.FC = () => {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Pending Invites</p>
-                  <p className="text-2xl font-bold text-navy">{invitations.length}</p>
+                  <p className="text-sm font-medium text-orange-700">Pending Invites</p>
+                  <p className="text-2xl font-bold text-orange-900">{invitations.length}</p>
                 </div>
                 <Mail className="w-8 h-8 text-orange-600" />
               </div>
             </CardContent>
           </Card>
-        </div>
+
+          <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-red-700">Password Resets</p>
+                  <p className="text-2xl font-bold text-red-900">{passwordResetRequests.length}</p>
+                </div>
+                <Key className="w-8 h-8 text-red-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* User Management */}
-          <div>
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="lg:col-span-2"
+          >
             <UserManagementCard
               users={companyUsers}
               onInviteUser={() => setIsInviteDialogOpen(true)}
               onUpdateUserRole={handleUpdateRole}
               onRemoveUser={handleRemoveUser}
+              onRequestPasswordReset={handleRequestPasswordReset}
+              onGenerateTemporaryPassword={handleGenerateTemporaryPassword}
               canManageUsers={canManageUsers}
               currentUserId={user?.id}
             />
-          </div>
+          </motion.div>
 
-          {/* Pending Invitations */}
-          <div>
+          {/* Side Panel */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="space-y-6"
+          >
+            {/* Pending Invitations */}
             <PendingInvitationsCard
               invitations={invitations}
               onResendInvitation={handleResendInvitation}
               onCancelInvitation={handleCancelInvitation}
               isLoading={isLoading}
             />
-          </div>
+
+            {/* Password Reset Requests */}
+            <PasswordResetCard
+              requests={passwordResetRequests}
+              isLoading={isLoading}
+            />
+          </motion.div>
         </div>
 
         {/* Invite User Dialog */}

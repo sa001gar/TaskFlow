@@ -2,21 +2,41 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { Company, CompanyUser, UserInvitation, InviteUserRequest, CompanyRole } from '../types';
 
+interface PasswordResetRequest {
+  id: string;
+  user_id: string;
+  requested_by: string;
+  company_id: string;
+  token: string;
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
 interface CompanyState {
   companies: Company[];
   currentCompany: Company | null;
   companyUsers: CompanyUser[];
   invitations: UserInvitation[];
+  passwordResetRequests: PasswordResetRequest[];
   isLoading: boolean;
   fetchCompanies: (userId: string) => Promise<void>;
   fetchCompany: (companyId: string) => Promise<void>;
   fetchCompanyUsers: (companyId: string) => Promise<void>;
   fetchInvitations: (companyId: string) => Promise<void>;
+  fetchPasswordResetRequests: (companyId: string) => Promise<void>;
   inviteUser: (invitation: InviteUserRequest) => Promise<void>;
   updateUserRole: (userId: string, companyId: string, role: CompanyRole) => Promise<void>;
   removeUser: (userId: string, companyId: string) => Promise<void>;
   resendInvitation: (invitationId: string) => Promise<void>;
   cancelInvitation: (invitationId: string) => Promise<void>;
+  requestPasswordReset: (userId: string, companyId: string) => Promise<void>;
+  generateTemporaryPassword: (userId: string, companyId: string) => Promise<string>;
 }
 
 export const useCompanyStore = create<CompanyState>((set, get) => ({
@@ -24,6 +44,7 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
   currentCompany: null,
   companyUsers: [],
   invitations: [],
+  passwordResetRequests: [],
   isLoading: false,
 
   fetchCompanies: async (userId: string) => {
@@ -163,6 +184,33 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
     }
   },
 
+  fetchPasswordResetRequests: async (companyId: string) => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase
+        .from('password_reset_requests')
+        .select(`
+          *,
+          user:users!password_reset_requests_user_id_fkey (
+            id,
+            name,
+            email
+          )
+        `)
+        .eq('company_id', companyId)
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      set({ passwordResetRequests: data || [], isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
   inviteUser: async (invitation: InviteUserRequest) => {
     set({ isLoading: true });
     try {
@@ -255,6 +303,47 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
       const currentInvitations = get().invitations;
       const updatedInvitations = currentInvitations.filter(inv => inv.id !== invitationId);
       set({ invitations: updatedInvitations, isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  requestPasswordReset: async (userId: string, companyId: string) => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.rpc('request_password_reset', {
+        target_user_id: userId,
+        company_id_param: companyId
+      });
+
+      if (error) throw error;
+
+      // Refresh password reset requests
+      await get().fetchPasswordResetRequests(companyId);
+      set({ isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  generateTemporaryPassword: async (userId: string, companyId: string) => {
+    set({ isLoading: true });
+    try {
+      // Generate a random temporary password
+      const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+      
+      const { data, error } = await supabase.rpc('generate_temporary_password', {
+        target_user_id: userId,
+        company_id_param: companyId,
+        new_password: tempPassword
+      });
+
+      if (error) throw error;
+
+      set({ isLoading: false });
+      return tempPassword;
     } catch (error) {
       set({ isLoading: false });
       throw error;
